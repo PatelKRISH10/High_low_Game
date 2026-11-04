@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('API /api/games POST Error:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error while saving game' },
+      { error: error instanceof Error ? error.message : 'Database error while saving game' },
       { status: 500 }
     );
   }
@@ -36,9 +36,8 @@ export async function GET(req: NextRequest) {
   } catch (error) {
     console.error('API /api/games GET Error:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error while fetching games' },
+      { error: error instanceof Error ? error.message : 'Database error while fetching games' },
       { status: 500 }
     );
   }
 }
-

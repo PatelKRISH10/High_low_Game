@@ -8,9 +8,8 @@ export async function GET() {
   } catch (error) {
     console.error('API /api/stats GET Error:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error while fetching statistics' },
+      { error: error instanceof Error ? error.message : 'Database error while fetching statistics' },
       { status: 500 }
     );
   }
 }
-

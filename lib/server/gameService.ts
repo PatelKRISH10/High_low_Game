@@ -1,7 +1,7 @@
 import { prisma, isDatabaseConfigured } from '@/lib/prisma';
 import { Difficulty, GameRecord, StatisticsData } from '@/types/game';
 
-// In-memory fallback cache if PostgreSQL is not yet configured or temporarily offline
+// In-memory fallback cache ONLY used in local development when DATABASE_URL is not set
 interface InMemoryStore {
   games: GameRecord[];
   stats: Record<Difficulty, StatisticsData>;
@@ -22,9 +22,14 @@ export class GameService {
    */
   public static async recordGame(gameData: GameRecord): Promise<{ success: boolean; id?: string }> {
     const { difficulty, winner, humanSecret, aiSecret, totalTurns, turns } = gameData;
+    const isProduction = process.env.NODE_ENV === 'production';
 
-    // Check if live PostgreSQL database is configured
-    if (isDatabaseConfigured()) {
+    // In production or when DATABASE_URL is provided, Prisma MUST be used.
+    if (isDatabaseConfigured() || isProduction) {
+      if (!isDatabaseConfigured()) {
+        throw new Error('Database is not configured: DATABASE_URL environment variable is missing.');
+      }
+
       try {
         const createdGame = await prisma.game.create({
           data: {
@@ -51,11 +56,14 @@ export class GameService {
 
         return { success: true, id: createdGame.id };
       } catch (err) {
-        console.warn('Prisma operation encountered error, falling back to memory store:', err);
+        console.error('Prisma database error during recordGame:', err);
+        throw new Error(
+          `Database error while saving game: ${err instanceof Error ? err.message : String(err)}`
+        );
       }
     }
 
-    // In-memory fallback
+    // In-memory fallback: ONLY available during local offline development without DATABASE_URL
     const id = `mem_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const savedRecord: GameRecord = {
       ...gameData,
@@ -127,7 +135,13 @@ export class GameService {
    * Fetches stats for all difficulty modes.
    */
   public static async getStatistics(): Promise<Record<Difficulty, StatisticsData>> {
-    if (isDatabaseConfigured()) {
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isDatabaseConfigured() || isProduction) {
+      if (!isDatabaseConfigured()) {
+        throw new Error('Database is not configured: DATABASE_URL environment variable is missing.');
+      }
+
       try {
         const stats = await prisma.statistics.findMany();
         const result: Record<Difficulty, StatisticsData> = {
@@ -149,7 +163,10 @@ export class GameService {
         }
         return result;
       } catch (err) {
-        console.warn('Prisma stats fetch error, falling back to memory store:', err);
+        console.error('Prisma database error during getStatistics:', err);
+        throw new Error(
+          `Database error while fetching statistics: ${err instanceof Error ? err.message : String(err)}`
+        );
       }
     }
 
@@ -160,7 +177,13 @@ export class GameService {
    * Retrieves recent games, optionally filtered by difficulty (useful for Hell mode ML traces).
    */
   public static async getRecentGames(difficulty?: Difficulty, limit: number = 20) {
-    if (isDatabaseConfigured()) {
+    const isProduction = process.env.NODE_ENV === 'production';
+
+    if (isDatabaseConfigured() || isProduction) {
+      if (!isDatabaseConfigured()) {
+        throw new Error('Database is not configured: DATABASE_URL environment variable is missing.');
+      }
+
       try {
         return await prisma.game.findMany({
           where: difficulty ? { difficulty } : undefined,
@@ -173,7 +196,10 @@ export class GameService {
           take: limit,
         });
       } catch (err) {
-        console.warn('Prisma getRecentGames error, falling back to memory store:', err);
+        console.error('Prisma database error during getRecentGames:', err);
+        throw new Error(
+          `Database error while fetching recent games: ${err instanceof Error ? err.message : String(err)}`
+        );
       }
     }
 
@@ -184,4 +210,3 @@ export class GameService {
     return filtered.slice(0, limit);
   }
 }
-
