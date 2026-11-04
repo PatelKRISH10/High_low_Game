@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Game {
+  id          String     @id @default(cuid())
+  difficulty  String
+  winner      String
+  humanSecret Int
+  aiSecret    Int
+  totalTurns  Int
+  createdAt   DateTime   @default(now())
+  turns       GameTurn[]
+
+  @@index([difficulty])
+  @@index([createdAt])
+}
+
+model GameTurn {
+  id           String   @id @default(cuid())
+  gameId       String
+  turnNumber   Int
+  player       String
+  guess        Int
+  response     String
+  remainingMin Int
+  remainingMax Int
+  createdAt    DateTime @default(now())
+
+  game Game @relation(fields: [gameId], references: [id], onDelete: Cascade)
+
+  @@index([gameId])
+  @@index([turnNumber])
+}
+
+model Statistics {
+  id           String   @id @default(cuid())
+  difficulty   String   @unique
+  gamesPlayed  Int      @default(0)
+  humanWins    Int      @default(0)
+  aiWins       Int      @default(0)
+  averageTurns Float    @default(0.0)
+  updatedAt    DateTime @updatedAt
+}
+
