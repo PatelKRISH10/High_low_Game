@@ -1,3 +1,6 @@
+🎮 Play Game here:
+https://high-low-game-pi.vercel.app/
+
 ## 📖 Project Overview
 
 **Mind Reader AI** is a modern full-stack web application pitting human players against an intelligent algorithm in a duel of deduction. 
